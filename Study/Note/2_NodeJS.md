@@ -260,6 +260,8 @@ process.cwd() // 실행되는 위치
 
 process.cpuUsage()
 
+process.memoryUsage().rss // 현재 메모리 사용량 체크
+
 process.exit() // 프로세스 종료
   // process.exit(1) // 프로세스를 종료하며, 오류가 있음을 알리고 싶을 때 사용
   // process.exit(0) // 프로세스 종료
@@ -544,7 +546,10 @@ randomPromise(인자)
 > Main Thread와 Worker Thread 구별
 
 ```javascript
-const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
+const {
+  Worker, isMainThread, parentPort, workerData,
+} = require('worker_threads');
+
 
 if (isMainThread) {
     const threads = new Set(); // 집합(배열) 생성
@@ -552,30 +557,373 @@ if (isMainThread) {
     threads.add(new Worker(__filename, {
         workerData: { start: 1 },
     }));
-   
+
     threads.add(new Worker(__filename, {
         workerData: { start: 2 },
     }));
-   
+
     threads.add(new Worker(__filename, {
         workerData: { start: 3 },
     }));
 
 
-    for (let worker of threads) {
-        worker.on('massage', (value) => console.log('워커로부터', value));
+    for (let worker of threads) {	// 직원 한명씩 데려오기
+        worker.on('message', (value) => console.log('From worker', value));
         worker.on('exit', () => {
             threads.delete(worker);
             if (threads.size === 0) {
-                console.log("모든 워커 종료!");
+                console.log("Job Done");
             }
         });
     }
-}
+} 
 
-else {  // worker thread 일 시작
+else {  // 직원 일 시작
     const data = workerData; // 객체
     parentPort.postMessage(data.start + 100);
 }
 ```
 
+
+
+**소수 찾기**
+
+- 싱글스레드
+
+``` javascript
+const min = 2;
+const max = 10_000_000;
+const primes = [];
+
+function generatePrimes(start, range) {
+    let isPrime = true;
+    const end = start + range;
+    for (let i = start; i < end; i++) {
+        for (let j = min; j < Math.sqrt(end); j++) {
+            if (i !== j && i % j === 0) {
+                isPrime = false;
+                break;
+            }
+        }
+    
+
+    if (isPrime) { primes.push(i); }
+    
+    isPrime = true;
+    }
+}
+
+console.time('timer1');
+
+generatePrimes(min, max);
+
+console.timeEnd('timer1')
+
+console.log(`소수의 개수: ${primes.length}`);
+```
+
+> 위와같은 경우 10초 정도가 소모되는데,
+>
+> 솟수찾기 사이트에 10명이 모이면 싱글스레드로 처리할 때, 총 100초의 시간동안 다른 작업이 불가능함
+
+
+
+- 멀티스레드
+
+```javascript
+const {
+  Worker, isMainThread, parentPort, workerData,
+} = require('worker_threads');
+
+
+const max = 10_000_000;
+const min = 2;
+let primes = [];
+
+function findPrimes(start, range) {
+    let isPrime = true;
+    const end = start + range;
+    for (let i = start; i < end; i++) {
+        for (let j = min; j < Math.sqrt(end); j++) {
+            if (i !== j && i % j === 0) {
+                isPrime = false;
+                break;
+            }
+        }
+    
+
+    if (isPrime) { primes.push(i); }
+    
+    isPrime = true;
+    }
+}
+
+
+if (isMainThread) {
+    const threadsCount = 8;
+    const range = Math.ceil((max - min) / threadsCount); // 내림
+    const threads = new Set();
+    
+    let start = min;
+
+    console.time('timer2');
+
+    for (let i = 0; i < threadsCount - 1; i++) {
+        const wStart = start;
+        threads.add(new Worker(__filename, { workerData: { start: wStart, range }}));
+        start += range; // start === worker에 각각 소수를 찾을 범위를 설정
+    }
+
+    threads.add(new Worker(__filename, { workerData: { start, range: range + ((max - min + 1) % threadsCount)}}));
+    
+    for (let worker of threads) {
+        worker.on('error', (err) => {
+            throw err;
+        });
+
+        worker.on('exit', () => {
+            threads.delete(worker);
+            if (threads.size === 0) {
+                console.timeEnd('timer2');
+                console.log(`소수의 개수: ${primes.length}`);
+            }
+        });
+
+        worker.on('message', (msg) => {
+            primes = primes.concat(msg);    // 작업물을 다 합쳐줘야함;
+        })
+    }
+}
+
+else {
+    findPrimes(workerData.start, workerData.range);
+    parentPort.postMessage(primes);
+}
+```
+
+> 2초로 줄어들음
+
+
+
+
+
+---
+
+
+
+
+
+## child_process
+
+
+
+> Node.JS 말고 다른 프로세스(터미널 등) 하나를 더 실행하는 느낌
+
+
+
+### exec
+
+``` javascript
+const exec = require('child_process').exec;
+// 혹은 const { exec } = require('child_process');
+
+var process = exec('cmd /c chcp 65001>nul && dir')   // 터미널에 dir이라 치는것과 같음.
+
+// 콘솔에 나온 데이터를 문자로 직접 받아줘야함
+process.stdout.on('data', function (data){
+    console.log(data.toString());
+});
+
+// 에러 처리
+process.stderr.on('data', function (data) {
+    console.error(data.toString('utf8'));
+});
+```
+
+
+
+### spawn 
+
+``` javascript
+const spawn = require('child_process').spawn;
+
+const process = spawn('python', ['test.py']);	// Python에게 test.py 실행하게
+
+process.stdout.on('data', function(data) {	// 결과로 도출 된 Console 문자들 가져오기
+    console.log(data.toString());
+});
+
+process.stderr.on('data', function(data) {
+    console.error(data.toString());
+});
+```
+
+**이렇게 다른 언어도 실행가능**
+
+
+
+
+
+----
+
+
+
+
+
+## 파일 시스템 접근 모듈
+
+> 해커들이 파일이름만 바꿔서 파일이름 **확인하지 못하도록** 주의
+
+
+
+### 읽기
+
+``` javascript
+const fs = require('fs').promises; // 뒤에 .promises를 붙이거나 밑에 Promisify를 붙이거나
+
+fs.readFile('./asdf.txt')// 이거 파일이름만 바꿔서 해커가 파일 다 읽어볼수있음
+    .then((data) => {
+    console.log(data);  // 16진수로 들어가있음
+    console.log(data.toString());
+    })
+    .catch((err) => {
+        throw err;
+    });
+```
+
+또는
+
+``` javascript
+import { promises as fs } from 'fs';
+
+fs.readFile('./asdf.txt')
+	.then((data) => console.log(data.toString()));
+	.catch((err) => {throw err});
+```
+
+또는
+
+```javascript
+import { promises as fs } from 'fs';
+
+async function loadText() {
+	let data = await fs.readFile('./asdf.txt')
+    console.log(data.toString());
+}
+loadText();
+```
+
+
+
+
+
+### 쓰기
+
+```javascript
+const fs = require('fs').promises;
+
+fs.writeFile('./asdf.txt', '글이 입력 되므니다!')
+	.then(() => fs.readFile('./asdf.txt'))
+	.then((data) => console.log(data.toString()))
+	.catch((err) => { throw err } );
+```
+
+> 혹은 동기로 readFileSync 같은거 사용해도 됨
+
+
+
+
+
+---
+
+
+
+
+
+## 스트림
+
+> - 버퍼 :  모아놨다가 한번에 보내기
+> - 스트림 : 바로바로 보내기 (버퍼를 작게 만들어서 주기적으로 데이터를 전달)
+
+
+
+### 버퍼
+
+```javascript
+// 버퍼로 변환
+const buffer = Buffer.from('버퍼로 바꿔주세요');
+console.log(buffer);
+console.log(buffer.length);
+console.log(buffer.toString());
+
+
+// 작은 버퍼들을 concat으로 합침 == 스트림
+const array = [Buffer.from('띄엄 '), Buffer.from('띄엄 '), Buffer.from('띄어쓰기')];
+console.log(Buffer.concat(array).toString());
+
+
+// 빈 버퍼 만들기
+Buffer.alloc(5);
+```
+
+ 
+
+### 스트림 심화
+
+**읽기**
+
+```javascript
+const fs = require('fs');
+
+const data = [];
+
+const readStream = fs.createReadStream('./asdf.txt');	// 한번에 64kB를 읽음 
+
+readStream.on('data', (chunk) => {	// 이벤트리스너임. data가 오면 익명함수 실행하는
+    data.push(chunk);
+    console.log('data: ', chunk, chunk.length);
+});
+
+readStream.on('end', () => {
+    console.log('end: ', Buffer.concat(data).toString());
+});
+```
+
+**쓰기**
+
+```javascript
+const fs = require('fs');
+
+const writeStream = fs.createWriteStream('./asdf.txt');
+
+writeStream.on('finish', () => console.log('파일 쓰기 완료'));
+
+writeStream.write('부자와 당나귀\n');
+writeStream.write('어느 날 아버지와 아들이 당나귀를 시장에 팔러\n');
+writeStream.write('시골길을 따라 몰고 가고 있었습니다.\n');
+writeStream.end();
+```
+
+**스트림을 사용하면 서버 메모리를 효율적으로 사용할 수 있음**
+
+
+
+### 파이프
+
+> 스트림 전송이 마치 파이프에 물이 흐르는 것 같아 붙은 이름
+
+``` javascript
+const fs = require('fs');
+const zlib = require('zlib');
+
+const readStream = fs.createReadStream('./asdf.txt', { highWaterMark: 16});
+
+const zlibStream = zlib.createGzip(); // 스트림 압축
+
+const writeStream = fs.createWriteStream('./asdf.txt.gz');  // 압축된 파일을 스트림으로 쓰기
+
+readStream.pipe(zlibStream).pipe(writeStream); // .on이 아닌 pipe로 이을 수 있음
+//조각조각 읽어보고, 조각조각 압축해서 조각조각 쓰는거
+```
+
+  
