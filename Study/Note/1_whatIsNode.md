@@ -1,3 +1,5 @@
+
+
 [자바스크립트 문법](ko.javascript.info)
 
 
@@ -24,6 +26,7 @@
 
 
 
+
 # 노드의 특성
 
 
@@ -35,13 +38,15 @@
 - 콜백 함수: 이벤트가 발생했을 때 실행될 함수
 
 
+---
+
 
 ## 논블로킹 I/O
 
 > 노드는 크게 "비동기면서 논블로킹", "동기면서 블로킹"으로 나뉜다.
 
 
-
+---
 
 
 ## 프로세스 vs 스레드
@@ -80,13 +85,15 @@ Node.js의 스레드는 당연히 여러개(멀티)지만, 우리가 다룰 수 
 ​			: **멀티스레드를 안하고**(어려우므로) 최대한 효율적으로 활용하기위해 Node.js를 이용
 
 
+---
+
 
 ## Libuv
 
 > 싱글스레드 비동기 I/O
 
  
-
+---
 
 
 ## 서버로서의 노드
@@ -98,7 +105,7 @@ Node.js의 스레드는 당연히 여러개(멀티)지만, 우리가 다룰 수 
 |    자바스크립트를 사용함    |                                 |
 
 
-
+---
 
 
 ## 노드의 작동방식
@@ -126,7 +133,7 @@ Node.js의 스레드는 당연히 여러개(멀티)지만, 우리가 다룰 수 
    > 이때 Promise가 일반 호출 새치기함
 
 
-
+---
 
 
 # JavaScript 복습
@@ -140,6 +147,8 @@ const는 뒤에 '='을 한번만 붙일 수 있음
 ```
 
 
+---
+
 
 ## 함수호출
 
@@ -147,6 +156,8 @@ const는 뒤에 '='을 한번만 붙일 수 있음
 function_name() == function_name``
 ```
 
+
+---
 
 
 ## Arrow Function
@@ -166,10 +177,12 @@ function_name() == function_name``
   : 꼭 이렇게 소괄호를 쳐줘야, 엔진이 헷갈리지 않음
 
 
+---
+
 
 ## 구조분해 할당
 
-Before
+**Before**
 
 ```javascript
 const example = {a: 123, b: {c: 135, d: 146}}
@@ -177,7 +190,7 @@ const a = example.a;
 const d = example.b.d;
 ```
 
-After
+**After**
 
 ```javascript
 const example = {a: 123, b: {c: 135, d: 146}}
@@ -188,7 +201,7 @@ console.log(d); // 146
 
 
 
-Before
+**Before**
 
 ```javascript
 arr = [1, 2, 3, 4, 5]
@@ -197,7 +210,7 @@ const y = arr[1]
 const z = arr[4]
 ```
 
-After
+**After**
 
 ```javascript
 arr = [1, 2, 3, 4, 5]
@@ -209,9 +222,203 @@ const [x, y, , , z] = arr; // 자리가 똑같아야함!
 **this가 있는 경우는 구조분해 할당이용 금지**
 
 
+---
+
+
+## Class
+
+**Class Declaration**
+
+ ```javascript
+class Human {
+  constructor(type = 'human') {
+      this.type = type;
+  }
+
+  static isHuman(human) { // static은 굳이 생성되는 객체마다 따로 선언해줄 필요 없게 미리 박아두는것
+      return human instanceof Human;
+  }
+
+  breathe() {
+      alert('h-a-a-a-m');
+  }
+}
+ ```
+
+**Class Inheritance**
+
+```javascript
+// After
+class Zero extends Human { // Class 상속
+  constructor(type, firstName, lastName) {
+    super(type);  // 부모의 type이 전달됨.
+    super.breathe(); // 부모의 breathe()가 호출됨.
+    this.firstName = firstName;
+    this.lastName = lastName;
+  }
+}
+```
+
+
+---
+
+
+## Promise
+
+**Promise**
+
+```javascript
+const condition = true;
+const promise = new Promise((resolve, reject) => {
+    if (condition) {
+        resolve('성공');
+    } else {
+        reject('실패');
+    }
+});
+
+promise
+    .then((message) => {
+        console.log(message);
+    })
+    .catch((error) => {
+        console.error(error);
+    })
+```
+
+> Callback 지옥 해결
 
 
 
-## 클래스
+**Async / Await**
 
- 
+```javascript
+async function findAndSaveUser(Users) {
+    let user = await.Users.findOne({});	// then을 사용하지 않고 그냥 기다리도록 설정
+    user.name = 'zero';
+    user = await user.save();
+    user = await Users.findOne({gender: 'm'});
+}
+```
+
+> Promise 지옥 해결
+
+- async: Promise를 return
+- await: then을 사용하지 않고 기다리게해줌
+
+- **catch**가 없으므로 try...catch 사용
+
+
+---
+
+
+## AJAX
+
+> 서버로 요청을 보내는 코드
+
+- 라이브러리 없이는 브라우저가 지원하는 XMLHttpRequest 객체 이용
+- AJAX 요청 시 Axios, fetch 라이브러리를 사용하는 게 편함.
+- HTML에 아래 스크립트를 추가하면 사용할 수 있음.
+
+``` HTML
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+	// 예제코드 삽입
+</script>
+```
+
+
+
+**axios.get() 은 Promise를 지원하는 함수**
+
+```javascript
+axios.get('https://www.zerocho.com/api/get')
+    .then((result) => {
+        console.log(result);
+        console.log(result.date);
+    })
+    .catch(console.log)
+```
+
+
+
+**따라서 async/await 사용가능**
+
+```javascript
+async() => { // async, await은 set!
+    try {
+        const result = await axios.get('https://www.zerocho.com/api/get')
+        console.log(result);
+        console.log(result.date);
+    } catch (e) {
+        console.log(e);
+    }
+}
+```
+
+
+
+**POST 요청을 하는 코드**
+
+``` javascript
+(async () => {
+	try {
+        const result = await axios.post('https://www.zerocho.com/api/post/json', {
+            name: 'zerocho',
+            birch: 1994,
+        });
+         console.log(result);
+        console.log(result.date);
+ 	} catch (error) {
+        console.error(error);
+    }
+})();
+```
+
+
+
+**form 태그에 담긴 데이터를 AJAX**
+
+``` javascript
+const formData = new FromData();
+formData.append('name', 'zerocho');
+formData.append('item', 'orange');
+//...
+//has: 데이터 존재 여부 확인
+//get: 데이터 조회
+//getAll: 데이터 모두 조회
+//delete: 데이터 삭제
+//set: 데이터 수정
+```
+
+
+
+**주소창에 한글 입력할 때**
+
+```javascript
+(async () => {
+	try {
+        const result = await axios.post(`https://www.zerocho.com/api/search/${encodeURIComponent('노드')}`
+                                        // '노드' == %EB%85%B8%EB%93%9C
+                                        // decodeURIComponent(''%EB%85%B8%EB%93%9C');
+                                        //...
+```
+
+> encode**URI**Component에 감싸서 입력하는게 **안전함**
+
+- URI = URL (Locate) + URN (Name)
+
+  : 서버의 자원위치(URI): 파일위치(URL)
+
+
+
+**HTML과 JS의 Data 교환**
+
+``` 
+data-user-job -> dataset.userJob (html -> js)
+
+dataset.monthSalary = 10000 -> data-month-salary = "10000" (js -> html)
+```
+
+
+
