@@ -1,4 +1,4 @@
-# Node.JS 객체
+# Node.JS 모듈
 
 >**추가적인 API는 [링크](https://nodejs.org/dist/latest-v15.x/docs/api/) 참조**
 
@@ -292,7 +292,9 @@ const secretCode = process.env.SECRET_CODE;
 
 ``` javascript
 NODE_OPTIONS = --max-old-space-size = 8192 // 메모리가 부족할때 늘릴 수 있음
-UV_THRADPOOL_SIZE = 8	// 복잡한 작업을 진행할 때, 사용할 스레드를 늘릴 수 있음
+UV_THREADPOOL_SIZE = 8	// 복잡한 작업을 진행할 때, 사용할 스레드를 늘릴 수 있음
+
+// window에선 SET UV_THREADPOOL_SIZE 로 각자 cpu 수에 맞게 조절
 ```
 
 
@@ -567,9 +569,10 @@ if (isMainThread) {
     }));
 
 
-    for (let worker of threads) {	// 직원 한명씩 데려오기
+    for (let worker of threads) {	// 직원 한명씩 데려와서 일 줌
+        // 일 주는 것만 순서대로 하고, 일을 전달받은 직원들은 각자 해당 업무들 함 (멀티)
         worker.on('message', (value) => console.log('From worker', value));
-        worker.on('exit', () => {
+        worker.on('exit', () => {	// .on == 이벤트 리스너
             threads.delete(worker);
             if (threads.size === 0) {
                 console.log("Job Done");
@@ -922,8 +925,188 @@ const zlibStream = zlib.createGzip(); // 스트림 압축
 
 const writeStream = fs.createWriteStream('./asdf.txt.gz');  // 압축된 파일을 스트림으로 쓰기
 
+
 readStream.pipe(zlibStream).pipe(writeStream); // .on이 아닌 pipe로 이을 수 있음
-//조각조각 읽어보고, 조각조각 압축해서 조각조각 쓰는거
+
+//조각조각 읽은 걸, 조각조각 압축해서 조각조각 쓰는거 === COPY
 ```
 
   
+
+
+
+----
+
+
+
+
+
+## 파일 및 폴더 생성
+
+
+
+### 폴더 / 파일 생성
+
+``` javascript
+const fs = require('fs').promises;
+const constants = require('fs').constants;
+
+fs.access('./folder', constants.F_OK | constants.W_OK | constants.R_OK)
+    .then(() => {return Promise.reject('이미 폴더 있음')})
+    .catch((e) => {
+        if (e.code === 'ENOENT') {
+            console.log('폴더 없음');
+            return fs.mkdir('./folder');
+        }
+        return Promise.reject(e);
+    })
+    .then(() => {
+        console.log('폴더 만들기 성공');
+        return fs.open('./folder/file.js', 'w');
+    })
+    .then(() => {
+        console.log('빈 파일 만들기 성공');
+        fs.rename('./folder/file.js', './folder/newfile.js');
+    })
+    .then(() => {
+        console.log('이름 바꾸기 성공');
+    })
+    .catch(console.log);
+```
+
+
+
+### 폴더 내용 확인 / 파일 삭제
+
+``` javascript
+const fs = require('fs').promises;
+
+fs.readdir('./folder')
+	.then((dir) => {
+    console.log('폴더 내용 확인', dir)	// 폴더 내용 확인 (readdir의 resolve가 폴더내용 리턴함)
+    return fs.unlink('./folder/newFile.js');	// '파일' 삭제
+})
+```
+
+
+
+### 파일 복사 / 폴더 삭제
+
+``` javascript
+const fs = require('fs').promises;
+
+fs.copyFile('asdf1.txt', 'asdf2.txt')	// 이전 readStream.pipe(writeStream)과 같음
+	.then( () => {console.log('복사 완료')
+                 return fs.rmdir('./folder')
+                 })
+	.catch( (e) => console.error(e) );
+```
+
+
+
+**이외에도 많은 메서드 존재**
+
+```javascript
+fs.watch(__dirname, func.)	// func의 인자로는 eventType, filename가 주어짐
+
+fs.rmdir('폴더 경로')	// 폴더안에 파일이 없는 경우에만 폴더 삭제
+
+fs.existsSync	// 파일, 폴더가 존재하는지 확인 가능
+
+fs.stats	// 폴더인지 파일인지 바로가기인지
+
+fs.appendFile('폴더 경로', data, callback)	// 기존의 파일이 있으면 그 뒤에 다른 숫자 붙여서 새로 생성
+```
+
+**얘네들은 에러나면 멈추지않고, 그냥 에러메세지 출력으로 흘림** (catch를 안붙여도 되긴 함)
+
+>  찝찝하다면, 아래와같이 흘려주자
+
+```javascript
+// 콜백 함수 사용
+fs...('폴더 경로', (err) => {
+	if(err) {
+		console.error(err);
+	}
+});
+
+// catch 사용 (Promise는 Catch 권장)
+fs...('폴더 경로')
+	.catch( (err) => {
+    	console.error(err);
+});
+```
+
+
+
+
+
+
+
+---
+
+
+
+
+
+## Event
+
+``` javascript
+const myEvent = new EventEmitter();
+
+// 이벤트 리스너. on === addListener
+myEvent.on('event1', console.log('이벵1'));
+myEvent.addListener('event2', console.log('이벵2'));
+
+myEvent.once('event3', console.log('이벵3')); // 한번만 실행됨
+
+// 이벤트 호출
+myEvent.emit('event1');
+
+// 이벤트 삭제
+myEvent.removeAllListeners('event3');	// 'event3'과 관련된 이벤트리스너 모두 삭제
+myEvent.removeListeners('이벤트 명', '콜백함수 이름') // 'event1 리스너가 많은데 그중 뭘 지워야 할지 모르니깐, 콜백함수의 이름도 써줘야함'
+
+// 이벤트 개수
+myEvent.listenerCount('이벤트 명');
+```
+
+
+
+
+
+---
+
+
+
+
+
+## Error, Exception 처리
+
+> NodeJS에서는 Error === Exception
+
+``` javascript
+try {
+    throw new Error('서버를 고장내주마');
+} catch (err) {
+    console.error(err);
+}
+```
+
+> 원래같았으면 Error가 발생하고 멈췄어야했는데,
+>
+> catch문에서 받아서, 문자를 출력해주는걸로 끝남
+
+
+
+ ### 에러에 대한 EventListener 이용
+
+``` javascript
+process.on('uncaughtException', (err) => {
+    console.error('예기치 못한 에러', err);
+});
+```
+
+> 다음과 같이 이벤트 리스너를 등록하여 Error 한번에 처리 가능
+>
+> **에러 기록용으로만 쓰는게 좋음**
