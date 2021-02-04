@@ -15,13 +15,15 @@ async function getUser() {
         
         toDoList.innerHTML = '';
 
-        const li = document.createElement('li');
-        const span = document.createElement('span');
-        const editBtn = document.createElement('button')
-        const removeBtn = document.createElement('button');
         
-
+        
         Object.keys(users).map((key) => {
+            
+            const li = document.createElement('li');
+            const span = document.createElement('span');
+            const editBtn = document.createElement('button')
+            const removeBtn = document.createElement('button');
+            
             let imsi = users[key];
             span.innerText = imsi.toDo;
             editBtn.innerText = 'edit✔';

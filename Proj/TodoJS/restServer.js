@@ -65,7 +65,7 @@ http.createServer(async (req, res) => {
         });
         return req.on('end', () => {
           console.log('PUT 본문(Body):', body);
-          users[key] = JSON.parse(body).name;
+          users[key].toDo = JSON.parse(body).toDo;
           res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
           return res.end('ok');
         });
