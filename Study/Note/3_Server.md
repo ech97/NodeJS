@@ -301,7 +301,7 @@ DELETE: 서버의 자원을 삭제하고자 할 때 사용
 
 **요청을 보낼때 정보를 넣어줌**
 
-> 누가 요청을 보냈는지 식벽가능
+> 누가 요청을 보냈는지 식별가능
 
 
 
@@ -312,9 +312,35 @@ DELETE: 서버의 자원을 삭제하고자 할 때 사용
 
  
 
+> ex)
+
 ```javascript
 console.log(req.url, req.headers.cookie); 	// (3) 요청의 헤더에 들어있는 쿠키
 
 res.writeHead(200, { 'Set-Cookie' : 'mycookie = test'});	// (2) 쿠키를 줌
 ```
 
+
+
+> index.html
+
+```html
+<form action='/login'>  // ? 뒤에 queryString 형태로 입력한 문자가 들어감
+    <input id='name' name='name' placeholder='이름을 입력하세요' />
+    <button id='login'>로그인</button>
+```
+
+
+
+> 쿠키 유효시간 설정
+
+```javascript
+'Set-Cookie' : `name=${encodeURIComponent(name)}; Expires=${expires.toGMTString()}; HttpOnly; Path=/`,	// HttpOnly를 사용하여 JS에선 접근할 수 없도록 설정
+```
+
+> - Expires = 날짜
+> - Max-age = 초
+> - Domain = 도메인명
+> - Path = URL    // '/~~' 뒷부분이 있으면 쿠키가 적용되게 함
+> - Secure    // HTTPS일 때만 쿠키 전송
+> - HttpOnly
